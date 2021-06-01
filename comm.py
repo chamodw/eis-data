@@ -7,20 +7,15 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 
 
-if (len(sys.argv) < 3):
-	print ("Usage comm.py port data_directory sample_id")
 
-port = sys.argv[1]
-path = sys.argv[2]
-
-
+gain_factor = 1
 
 def getPacket():
 	s = struct.Struct("I I I I I I I I I I I");
 	header=0xb5280013
 	l=3
 	footer=0x31a39b0e
-	d=[header, l, 0,  start_freq, increment, num_increments,  0, 0, 0, 0, footer];
+	d=[header, l, 0,  start_freq, increment, num_increments,  0, num_avg, 0, 0, footer];
 	packed_data=s.pack(*d);
 	return (s.size, packed_data)
 
@@ -34,52 +29,69 @@ def printColor(text, color):
 	
 	print (prefix+text+suffix)
 
+def getProgressBar (i, n):
+	p = '='*int(i*80/n) + '-'*(80-int(i*80/n)) + '|'
+	return p
+
+if (len(sys.argv) < 3):
+	printColor ("Usage comm.py port data_directory sample_id", 'r')
+	exit()
+
+port = sys.argv[1]
+path = sys.argv[2]
+
+
+
+
+
 
 try:
-	ser = serial.Serial(port, timeout=1)
+	ser = serial.Serial(port, timeout=100)
 except:
 	printColor("EIS Device not found", 'r')
 	exit(1)
 
-start_freq=10000
-increment=1000
+start_freq=1000
+increment=10
 num_increments=100
-sample_id=sys.argv[3]
+num_avg = 4
+#
+#print ("Enter session id (solution_electrode)")
+#session_id = input()
+#print ("Enter temperature")
+#temperature = input()
+#print ("Enter concentrations, separated by commas")
+#s = input()
+#concentrations = [float(x) for x in s.split(',')]
+#
+session_id = 'avg2'
+temperature = 25
+concentrations = [1, 2]
+n_conc = len(concentrations)
 
+print ("Session ID: ", session_id);
+print ("Start Frequency: ", start_freq/1000, "kHz")
+print ("Frequency Increment: ", increment)
+print ("Number of Increments: ", num_increments)
+for i_conc in range(n_conc):
+#	conc = concentrations[i_conc] #current concentration
+#	printColor(getProgressBar(i_conc+1, n_conc), 'g')
 
-
-while(1):
-	print(sample_id, " : ", start_freq, increment, num_increments);
-	print ("Sample ID: ", sample_id);
-	print ("Start Frequency: ", start_freq/1000, "kHz")
-	print ("Frequency Increment: ", increment)
-	print ("Number of Increments: ", num_increments)
-	print("Enter details to change, or enter to continue collecting data")
-	inp = input()
-	if (len(inp)):
-		l = inp.split(',');
-		sample_id = l[0]
-		start_freq = int(l[1]);
-		increment = int(l[2]);
-		num_increments = int(l[3]);
-		print(sample_id, " : ", start_freq, increment, num_increments);
-
-	#Create command packet for the sensor
+		#Create command packet for the sensor
 	size, packet=getPacket()
 	ser.write(packet); # Run the sensor
 	printColor ("Starting data collection...", 'g')
 
 
 
-	#Open file for data recording
-	now=datetime.now()
-	time_str=now.strftime("%Y%m%d-%H:%M")
-	out_file=open(path + '/' + time_str + '.txt', 'w');
-
-	#record the parameters
-	header_line = ",,," + sample_id + "," + str(start_freq) + "," + str(increment) + "," + str(num_increments)
-	out_file.write(header_line)
-	out_file.write("\n")
+#	#Open file for data recording
+#	now=datetime.now()
+#	out_file=open(path + '/' + session_id + '_' + str(concentrations[i_conc]) +  '.txt', 'w');
+#
+#	#record the parameters
+#	header_line = ",,," + session_id + ',' + str(conc) 
+#	out_file.write(header_line)
+#	out_file.write("\n")
 		
 	real = []
 	im = []
@@ -90,10 +102,11 @@ while(1):
 		line = ser.readline(100);
 
 		# Fancy progress bad animation
-		print('-'*int(i*80/num_increments) + ' '*(80-int(i*80/num_increments)) + '|', end='\r')
+		print(getProgressBar(i, num_increments), end='\r')
 
 		if (line == b''):
 			continue
+		print (line)
 		data_line = [int(x) for x in line.decode('utf-8').split(',')]
 		cur_freq = start_freq + increment*data_line[0]
 		freq.append(cur_freq)
@@ -102,26 +115,27 @@ while(1):
 		real.append(data_line[1])
 		im.append(data_line[2])
 		log_str = ','.join([str(x) for x in data_line])
-		out_file.write(log_str)
-		out_file.write("\n")
+#		out_file.write(log_str)
+#		out_file.write("\n")
+	print (real)
+	plt.figure(1)
+	plt.plot(freq[1:], real[1:], label = 'Real')
+	plt.plot(freq[1:], im[1:], label = 'imag')
+	plt.pause(1)
+#	x = input()
+#	ax.plot(freq[1:], im[1:])
 
-	
-	plt.plot(freq, real, label = 'Real')
-	plt.plot(freq, im)
-	plt.xlabel("Frequency")
-	plt.show()
-
-
-	#Attempt plolar plot
-	try:
-		r = [np.sqrt(real[i]**2+im[i]**2) for i in range(len(real))]
-		theta = [np.arctan(im[i]/real[i]) for i in range(len(real))]
-		plt.polar(theta, r)
-		plt.show()
-	except:
-		printColor("Polar plot failed", 'r')
-
-
+#	#Attempt plolar plot
+#	try:
+#		r = [np.sqrt(real[i]**2+im[i]**2) for i in range(len(real))]
+#		theta = [np.arctan(im[i]/real[i]) for i in range(len(real))]
+#		plt.polar(theta[1:], r[1:])
+#		plt.show()
+#	except:
+#		printColor("Polar plot failed", 'r')
+#
+#
+	continue
 	out_file.close()
 	printColor("\nData writeen to " + out_file.name, 'g')
-	exit()
+
