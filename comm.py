@@ -5,6 +5,7 @@ import sys
 import struct
 import matplotlib.pyplot as plt
 from datetime import datetime
+import pandas as pd
 
 
 
@@ -28,8 +29,10 @@ v_range_names=['0', '2.0V', '1.0V', '400mV', '200mV']
 # +- 0
 # +- Footer
 
-
-
+#datastructures to hold all the data
+session_freq = []
+session_data_mag = []
+session_data_phase = []
 
 
 def main():
@@ -54,18 +57,13 @@ def main():
 #Fixed parameters
 	start_freq=10000
 	increment = 500
-	num_increments=160
+	num_increments=16
 	num_avg = 2
 	v_range = 1
 	pga_gain = 1
 
 
 #User parameters
-	session_id = 'avg2'
-	temperature = 25
-	concentrations = [1, 2]
-
-
 	session_id = input("Enter session ID: ")
 	temperature = float(input("Enter temperature: "))
 	conc_str = input("Enter concentrations separated by spaces: ")
@@ -78,46 +76,38 @@ def main():
 	print ("Temperature: ", temperature)
 	print ("Gain factor = " + str(gain_factor) )
 
+# Define file headers that include the parameters
 	file_header_1 = "#, session_id, temperature, start_freq, increment, num_increments, num_avg, v_range, pga_gain, gain_factor\n"	
-	file_header = '#' + ','.join([session_id, str(temperature), 
+	file_header_2 = '#' + ','.join([session_id, str(temperature), 
 									str(start_freq), str(increment), str(num_increments), 
 									str(num_avg), str(v_range), str(pga_gain), str(gain_factor)]) + '\n'
 
 	file_header_3 = "freq, real, imaginary, concentration\n"
 
 	# Open a raw data file to dump everything. This is useful in case process gets interrupted
-	raw_file_name = path + '/' + session_id + '.csv' 
+	raw_file_name = path + '/' + session_id + '_raw.csv' 
 	raw_file = open(raw_file_name, 'w+')
+	raw_file.writelines([file_header_1, file_header_2, file_header_3])
+	
+	row_list = [0 for x in concentrations]
 
-	raw_file.writelines([file_header_1, file_header, file_header_3])
+	# Populate the freqency list
+	session_freq = list(range(start_freq, start_freq + num_increments*increment, increment))
+	session_data_mag = [row_list.copy() for x in session_freq]
+	session_data_phase = [row_list.copy() for x in session_freq]
 
-
+	# Loop through each of the concentrations 
 	for i_conc in range(n_conc):
 		conc = concentrations[i_conc] #current concentration
 
 
 		#Print the progress 
-		print(getProgressBar(i_conc+1, n_conc))
+		print(getProgressBar(i_conc, n_conc))
 
 		# Announce the next concentration in the line up
 		printColor ('*** ' + str(conc) + ' ***', 'g')	
 		x = input("Press enter collect data")
 
-		print("Starting data collection..." )
-
-
-
-
-
-
-#	#Open file for data recording
-#	now=datetime.now()
-		#out_file=open(path + '/' + session_id + '_' + str(concentrations[i_conc]) +  '.txt', 'w');
-#
-#	#record the parameters
-#	header_line = ",,," + session_id + ',' + str(conc) 
-#	out_file.write(header_line)
-#	out_file.write("\n")
 			
 		# Command the hardware to perform a sweep and retrieve the data
 		(freq, real, im) = performSweep(ser, start_freq = start_freq, increment_freq = increment, 
@@ -128,22 +118,43 @@ def main():
 
 		# Write the raw real and imaginary values to the raw data file
 		raw_file.writelines([ str(freq[i]) + ',' + str(real[i]) + ',' + str(freq[i]) + ',' + str(conc) + '\n' for i in range(len(freq))])
-
 		raw_file.flush()
+
+
+		# Append the data to session_data arrays
+		for i in range(min(len(session_freq), len(freq))):
+			if (freq[i] == session_freq[i]):
+				session_data_mag[i][i_conc] = impedance[i]
+				session_data_phase[i][i_conc] = 0  # TODO: Update with calculated phase
+
+
+
+
 		
 		print ("Real range : " + str( min(real)) + " - " + str(max(real))), 	
 		print ("Imaginary range : " + str( min(im)) + " - " + str(max(im))), 	
 		plt.figure(1)
-		plt.plot(freq, impedance, label = 'Mag')
-		plt.legend(str(concentrations[i_conc]))
+		plt.plot(freq, impedance, label = str(conc))
+		plt.legend()
 		plt.pause(1)
 
+	x = input("Press enter to save data, type x to discard ")
+	if (len(x)):
+		print ("Discarding data")
+		exit()
+# Create pandas frames and save to CSV files
+	df1 = pd.DataFrame(session_data_mag)
+	df1.columns = [str(x) for x in concentrations]
+	df1.insert(0, 'freq', session_freq)
+	mag_csv_str = df1.to_csv()
+	
+	mag_csv_path = path + '/' + session_id + '_mag.csv' 
+	mag_csv_file = open(mag_csv_path, 'w')
 
-
-	#	out_file.close()
-	#	printColor("\nData writeen to " + out_file.name, 'g')
-
-
+	mag_csv_file.writelines([file_header_1, file_header_2, file_header_3])
+	mag_csv_file.write(mag_csv_str)
+	mag_csv_file.close()
+	
 
 
 
@@ -173,8 +184,16 @@ def printColor(text, color):
 # Parameters (progress_count, full_count)
 # Returns a string
 def getProgressBar (i, n):
-	p = '='*int(i*80/n) + '-'*(80-int(i*80/n)) + '|'
+	i = i+1
+	fill = '█'
+	l = 60
+	blank = '-'
+	f = int(i*l/n)
+	e = l-int(i*l/n)
+	p = fill*f + blank*e + '|' + " " + str(i) + "/" + str(n)
+	
 	return p
+
 
 
 def performSweep(ser,  start_freq, increment_freq, num_increments, num_avg, v_range, pga_gain):
