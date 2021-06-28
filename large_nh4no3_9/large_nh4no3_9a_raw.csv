@@ -1,3 +1,0 @@
-#, session_id, temperature, start_freq, increment, num_increments, num_avg, v_range, pga_gain, gain_factor
-#large_nh4no3_9a,19.9,10000,450,200,4,1,1,1.0092016396570935e-08
-freq, real, imaginary, concentration

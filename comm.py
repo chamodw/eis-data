@@ -9,8 +9,16 @@ import pandas as pd
 
 
 
-gain_factor = 2.2177474841604154e-09
+gain_factor = 7.128300377252934e-09 # Res: 22060.0, 70.0kHz, range1, gain: 1
+#1.0092016396570935e-08 # Res: 22060.0, 30.0kHz, range1, gain: 1
+#1.0126858710209283e-08 # Res: 22060.0, 6.0kHz, range1, gain: 1
+#1.0092016396570935e-08 # Res: 22060.0, 30.0kHz, range1, gain: 1
+#1.0157660024619305e-08 # Res: 22060.0, 30.0kHz, range1, gain: 1
+#5.374746845316806e-08 # Res: 22060.0, 30.0kHz, range3, gain: 1
 
+#2.2117844010575636e-08 # Res: 10000.0, 30.0kHz, range2, gain: 1
+#4.89239538969537e-09 # Res: 10000.0, 30.0kHz
+ 
 
 v_range_names=['0', '2.0V', '1.0V', '400mV', '200mV']
 
@@ -55,10 +63,10 @@ def main():
 
 	
 #Fixed parameters
-	start_freq=10000
-	increment = 500
-	num_increments=16
-	num_avg = 2
+	start_freq=60000
+	increment = 40
+	num_increments= 500
+	num_avg = 4
 	v_range = 1
 	pga_gain = 1
 
@@ -75,6 +83,8 @@ def main():
 	print ("Number of Increments: ", num_increments)
 	print ("Temperature: ", temperature)
 	print ("Gain factor = " + str(gain_factor) )
+	printColor("PGA Gain: " + str(pga_gain), 'g')
+	printColor("Voltage range: " + v_range_names[v_range] + " - " + str(v_range), 'g')
 
 # Define file headers that include the parameters
 	file_header_1 = "#, session_id, temperature, start_freq, increment, num_increments, num_avg, v_range, pga_gain, gain_factor\n"	
@@ -106,7 +116,7 @@ def main():
 
 		# Announce the next concentration in the line up
 		printColor ('*** ' + str(conc) + ' ***', 'g')	
-		x = input("Press enter collect data")
+		x = input("Press enter to collect data")
 
 			
 		# Command the hardware to perform a sweep and retrieve the data
@@ -135,7 +145,10 @@ def main():
 		print ("Imaginary range : " + str( min(im)) + " - " + str(max(im))), 	
 		plt.figure(1)
 		plt.plot(freq, impedance, label = str(conc))
+#		plt.ylim(bottom = 0)
 		plt.legend()
+		plt.savefig(path + '/' + session_id + '.png')
+		plt.title(session_id)
 		plt.pause(1)
 
 	x = input("Press enter to save data, type x to discard ")
