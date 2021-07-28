@@ -9,7 +9,11 @@ import pandas as pd
 
 
 
-gain_factor = 7.128300377252934e-09 # Res: 22060.0, 70.0kHz, range1, gain: 1
+gain_factor = 1.0152170736012073e-08 # Res: 22060.0, 20.0kHz, range1, gain: 1
+#1.0167992056591344e-08 # Res: 22060.0, 20.0kHz, range1, gain: 1 large
+#1.0152170736012073e-08 # Res: 22060.0, 20.0kHz, range1, gain: 1
+#1.01432854305411e-08 # Res: 22060.0, 30.0kHz, range1, gain: 1
+#7.128300377252934e-09 # Res: 22060.0, 70.0kHz, range1, gain: 1
 #1.0092016396570935e-08 # Res: 22060.0, 30.0kHz, range1, gain: 1
 #1.0126858710209283e-08 # Res: 22060.0, 6.0kHz, range1, gain: 1
 #1.0092016396570935e-08 # Res: 22060.0, 30.0kHz, range1, gain: 1
@@ -63,9 +67,9 @@ def main():
 
 	
 #Fixed parameters
-	start_freq=60000
-	increment = 40
-	num_increments= 500
+	start_freq= 1000
+	increment = 200
+	num_increments= 450
 	num_avg = 4
 	v_range = 1
 	pga_gain = 1
@@ -87,10 +91,10 @@ def main():
 	printColor("Voltage range: " + v_range_names[v_range] + " - " + str(v_range), 'g')
 
 # Define file headers that include the parameters
-	file_header_1 = "#, session_id, temperature, start_freq, increment, num_increments, num_avg, v_range, pga_gain, gain_factor\n"	
+	file_header_1 = "#, session_id, temperature, start_freq, increment, num_increments, num_avg, v_range, pga_gain, gain_factor, unit\n"	
 	file_header_2 = '#' + ','.join([session_id, str(temperature), 
 									str(start_freq), str(increment), str(num_increments), 
-									str(num_avg), str(v_range), str(pga_gain), str(gain_factor)]) + '\n'
+									str(num_avg), str(v_range), str(pga_gain), str(gain_factor)]) + ',mgL\n'
 
 	file_header_3 = "freq, real, imaginary, concentration\n"
 
